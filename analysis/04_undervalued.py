@@ -36,6 +36,12 @@ BIG5 = {"GB1": "Premier League", "ES1": "LaLiga", "IT1": "Serie A", "L1": "Bunde
 
 def load(con):
     df = con.execute((ROOT / "sql" / "04_player_seasons.sql").read_text()).df()
+    # DuckDB's parallel aggregation returns rows in varying order and can differ in the last bits of
+    # floating-point averages between runs; either is enough to flip a tree split. Fix the order and
+    # round floats so model fits are exactly reproducible.
+    df = df.sort_values(["season", "player_id"]).reset_index(drop=True)
+    floats = df.select_dtypes("float").columns
+    df[floats] = df[floats].round(8)
     m = df["league_minutes"].clip(lower=1)
     df["g90"] = df["goals"] * 90 / m
     df["a90"] = df["assists"] * 90 / m
@@ -55,7 +61,9 @@ def load(con):
 
 
 def design(df, cats):
-    X = df[NUMS].copy()
+    # Plain float64: pandas nullable dtypes (pd.NA) are converted unreliably by scikit-learn and made
+    # model fits differ from run to run.
+    X = df[NUMS].astype("float64")
     for c in CATS:
         X[c] = pd.Categorical(df[c], categories=cats[c])
     return X

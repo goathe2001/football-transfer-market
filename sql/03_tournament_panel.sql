@@ -47,14 +47,14 @@ contributions AS (
     GROUP BY ALL
 ),
 baseline AS (
-    -- Last valuation before kickoff (within 12 months).
+    -- Last valuation before kickoff (within 12 months); ties on date broken by value.
     SELECT t.tournament, t.t_start, t.t_end, v.player_id,
-           arg_max(v.market_value_in_eur, v.date) AS pre_value,
-           MAX(v.date) AS pre_date
+           v.market_value_in_eur AS pre_value, v.date AS pre_date
     FROM tournaments t
     JOIN player_valuations v
       ON v.date < t.t_start AND v.date >= t.t_start - INTERVAL 12 MONTH
-    GROUP BY ALL
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY t.tournament, v.player_id
+                               ORDER BY v.date DESC, v.market_value_in_eur DESC) = 1
 ),
 eligible AS (
     SELECT b.*, p.position,

@@ -21,13 +21,19 @@ by_league AS (
     WHERE competition_id IN (SELECT competition_id FROM leagues)
     GROUP BY ALL
 ),
-league_season AS (
-    SELECT player_id, season,
-           arg_max(league, minutes)  AS league,
-           arg_max(club_id, minutes) AS club_id,
-           SUM(minutes) AS league_minutes, SUM(apps) AS league_apps,
-           SUM(goals) AS goals, SUM(assists) AS assists, SUM(yellows) AS yellows
+main_club AS (
+    -- League and club where the player played most; explicit tie-breaks keep this deterministic.
+    SELECT player_id, season, league, club_id
     FROM by_league
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY player_id, season
+                               ORDER BY minutes DESC, apps DESC, league, club_id) = 1
+),
+league_season AS (
+    SELECT b.player_id, b.season, m.league, m.club_id,
+           SUM(b.minutes) AS league_minutes, SUM(b.apps) AS league_apps,
+           SUM(b.goals) AS goals, SUM(b.assists) AS assists, SUM(b.yellows) AS yellows
+    FROM by_league b
+    JOIN main_club m USING (player_id, season)
     GROUP BY ALL
 ),
 europe AS (
@@ -50,11 +56,11 @@ club_strength AS (
     GROUP BY ALL
 ),
 season_end_value AS (
-    SELECT player_id, year(date) - 1 AS season,
-           arg_max(market_value_in_eur, date) AS value
+    SELECT player_id, year(date) - 1 AS season, market_value_in_eur AS value
     FROM player_valuations
     WHERE month(date) <= 7 AND market_value_in_eur > 0
-    GROUP BY ALL
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY player_id, year(date)
+                               ORDER BY date DESC, market_value_in_eur DESC) = 1
 )
 SELECT ls.*,
        p.name, p.position, p.sub_position, p.foot, p.height_in_cm,

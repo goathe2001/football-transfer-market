@@ -26,6 +26,9 @@ from common import FIG_DIR, OUT_DIR, ROOT, connect
 
 def load(con):
     df = con.execute((ROOT / "sql" / "03_tournament_panel.sql").read_text()).df()
+    # DuckDB returns rows in a nondeterministic order; quintile cut-offs below break ties by row
+    # order, so fix it to make results exactly reproducible.
+    df = df.sort_values(["tournament", "player_id", "date"]).reset_index(drop=True)
     df["age_band"] = pd.cut(df["age"], [17, 21, 24, 27, 30, 35],
                             labels=["18-21", "22-24", "25-27", "28-30", "31-34"])
     players = df.drop_duplicates(["tournament", "player_id"])
@@ -53,7 +56,8 @@ def load(con):
 
 def per_player_quarter(df):
     """One observation per player, tournament and quarter: the last valuation in that quarter."""
-    df = df.sort_values("date")
+    # Stable sort with a value tie-break so same-day valuations resolve the same way every run.
+    df = df.sort_values(["date", "log_change"], kind="mergesort")
     return df.groupby(["tournament", "player_id", "quarter"], as_index=False).last()
 
 
