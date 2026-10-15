@@ -34,7 +34,9 @@ EXCLUDE_FROM_LIST = {"RU1", "UKR1"}
 BIG5 = {"GB1": "Premier League", "ES1": "LaLiga", "IT1": "Serie A", "L1": "Bundesliga", "FR1": "Ligue 1"}
 
 
-def load(con):
+def load(con, require_value=True):
+    """Player-season features. require_value=False keeps rows without a season-end market value
+    (the weekly scouting refresh scores those against each player's latest value instead)."""
     df = con.execute((ROOT / "sql" / "04_player_seasons.sql").read_text()).df()
     # DuckDB's parallel aggregation returns rows in varying order and can differ in the last bits of
     # floating-point averages between runs; either is enough to flip a tree split. Fix the order and
@@ -49,7 +51,8 @@ def load(con):
     df["yellows90"] = df["yellows"] * 90 / m
     df["euro_ga90"] = df["euro_goal_contrib"] * 90 / df["euro_minutes"].clip(lower=90)
     df["minute_share"] = (df["league_minutes"] / (df["club_games"] * 90)).clip(upper=1)
-    df = df[df["value"].notna()].copy()
+    if require_value:
+        df = df[df["value"].notna()].copy()
     df["log_value"] = np.log(df["value"])
     df["rel_value"] = df["log_value"] - df.groupby("season")["log_value"].transform("median")
     # Next-year growth relative to the typical player that season (removes market-wide inflation).

@@ -1,11 +1,11 @@
-"""Step 6: export analysis results as compact JSON for the interactive dashboard.
+"""Step 6: export the research findings as compact JSON for the interactive dashboard.
 
 Writes to dashboard/public/data/:
-  players.json    every 2025/26 player-season in the valuation model (>= 900 league minutes): stats,
-                  market value, model fair value, gap, and SHAP contributions
-  histories.json  full market-value history for those players, keyed by player_id
   insights.json   age curves, transfer premiums, tournament event study, backtest, robustness
-  meta.json       league names, feature labels, headline numbers, data snapshot date
+  meta.json       league names, feature labels, headline numbers, research snapshot date
+
+These are frozen with the research snapshot. The scouting list (players.json, histories.json,
+scouting.json) is written by 07_refresh_scouting.py, which GitHub Actions runs weekly.
 
 Run after steps 1-5 (it reads some of their CSV outputs).
 """
@@ -37,37 +37,6 @@ def r(x, nd=3):
 
 def pct(x):
     return (np.exp(x) - 1) * 100
-
-
-def players_and_histories(con):
-    test, values, check = robust.fit_shap(con)
-    test = test.assign(model_value=lambda d: d["value"] * np.exp(-d["residual_step4"]))
-    rows = []
-    for idx, p in test.iterrows():
-        contrib = values.loc[idx].sort_values(key=np.abs, ascending=False)
-        rows.append({
-            "id": int(p["player_id"]), "name": p["name"], "age": int(p["age"]),
-            "pos": p["position"], "sub": None if p["sub_position"] == "unknown" else p["sub_position"],
-            "club": p["club_name"], "league": p["league"],
-            "min": int(p["league_minutes"]), "apps": int(p["league_apps"]),
-            "g": int(p["goals"]), "a": int(p["assists"]), "ga90": r(p["ga90"], 2),
-            "euroMin": int(p["euro_minutes"]),
-            "value": int(p["value"]), "model": int(round(p["model_value"], -4)),
-            "gap": r(pct(-p["residual_step4"]), 1),
-            "contract": None if pd.isna(p["contract_expiration_date"]) else str(p["contract_expiration_date"])[:10],
-            "excluded": p["league"] in valuation.EXCLUDE_FROM_LIST,
-            "shap": [[f, r(pct(v), 1)] for f, v in contrib.head(6).items()],
-        })
-    ids = [p["id"] for p in rows]
-    hist = con.execute("""
-        SELECT player_id, strftime(date, '%Y-%m-%d') AS d, market_value_in_eur AS v
-        FROM player_valuations
-        WHERE player_id IN (SELECT UNNEST(?)) AND market_value_in_eur > 0
-        ORDER BY player_id, date, market_value_in_eur
-    """, [ids]).df()
-    histories = {str(pid): [[d, int(v)] for d, v in zip(g["d"], g["v"])]
-                 for pid, g in hist.groupby("player_id")}
-    return rows, histories, check
 
 
 def insights(con):
@@ -136,11 +105,11 @@ def insights(con):
 def main():
     con = connect()
     DEST.mkdir(parents=True, exist_ok=True)
-    players, histories, check = players_and_histories(con)
+    _, _, check = robust.fit_shap(con)
     ins = insights(con)
 
     snapshot = con.execute("SELECT strftime(MAX(date), '%Y-%m-%d') FROM player_valuations").fetchone()[0]
-    leagues = sorted({p["league"] for p in players})
+    leagues = sorted(valuation.load(con)["league"].unique())
     comp = dict(con.execute("SELECT competition_id, name FROM competitions").fetchall())
     league_names = {lg: LEAGUE_NAMES.get(lg, comp.get(lg, lg).replace("-", " ").title()) for lg in leagues}
     league_names["Other"] = LEAGUE_NAMES["Other"]
@@ -155,11 +124,10 @@ def main():
                    "paidTransfers": 15983, "playerSeasons": 50113, "tournaments": 7},
     }
 
-    for name, obj in [("players", players), ("histories", histories), ("insights", ins), ("meta", meta)]:
+    for name, obj in [("insights", ins), ("meta", meta)]:
         path = DEST / f"{name}.json"
         path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
         print(f"{path.relative_to(ROOT)}: {path.stat().st_size / 1e6:.2f} MB")
-    print(f"{len(players):,} players, {sum(len(h) for h in histories.values()):,} valuation points")
 
 
 if __name__ == "__main__":

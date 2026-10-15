@@ -93,6 +93,12 @@ h3 { font-size: 1rem; margin: 0; }
 .lede { color: var(--ink-2); max-width: 760px; font-size: 1.05rem; margin: 0 0 24px; }
 .section-lede { color: var(--ink-2); max-width: 760px; margin: 0 0 16px; }
 .muted { color: var(--muted); }
+.refresh-note {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--ink-2);
+  background: var(--surface-2); border-radius: 999px; padding: 4px 12px; margin: -8px 0 18px;
+}
+.refresh-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.refresh-note.is-stale .refresh-dot { background: var(--muted); }
 .small { font-size: 0.85rem; }
 
 /* Cards & tiles */
@@ -166,7 +172,7 @@ tbody tr[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 12
 .value-pair { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
 .value-pair div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
 .value-pair b { display: block; font-size: 1.15rem; }
-.value-pair span { color: var(--muted); font-size: 0.75rem; }
+.value-pair span { color: var(--muted); font-size: 0.75rem; display: block; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 0.82rem; margin-top: 12px; }
 .stats div { display: flex; flex-direction: column; }
 .stats span { color: var(--muted); font-size: 0.72rem; }

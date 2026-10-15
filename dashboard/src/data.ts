@@ -19,6 +19,10 @@ export type Player = {
   gap: number;
   contract: string | null;
   excluded: boolean;
+  /** Date of the market value shown (latest valuation). */
+  valueDate: string;
+  /** Current club, when it differs from the club in the stats season. */
+  now: string | null;
   shap: [string, number][];
 };
 
@@ -43,6 +47,17 @@ export type Meta = {
   excludedLeagues: string[];
   shapCheck: Record<string, number>;
   counts: Record<string, number>;
+};
+
+/** Written by analysis/07_refresh_scouting.py (run on demand from GitHub Actions). */
+export type Scouting = {
+  statsSeason: string;
+  valuesAsOf: string;
+  refreshed: string;
+  /** True when the upstream dataset has stopped publishing new market values. */
+  stale: boolean;
+  players: number;
+  trainSeasons: string;
 };
 
 export type Histories = Record<string, [string, number][]>;

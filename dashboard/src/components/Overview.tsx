@@ -1,5 +1,5 @@
 import { Bar, BarChart, Cell, ErrorBar, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
-import type { Insights, Meta } from "../data";
+import type { Insights, Meta, Scouting } from "../data";
 import { signedPct } from "../data";
 import type { Palette } from "../theme";
 import { ChartCard } from "./ChartCard";
@@ -7,7 +7,19 @@ import { RoundedBar, TooltipBox } from "./chartParts";
 
 type Tab = "overview" | "scouting" | "insights" | "about";
 
-export function Overview({ ins, meta, palette, go }: { ins: Insights; meta: Meta; palette: Palette; go: (t: Tab, anchor?: string) => void }) {
+export function Overview({
+  ins,
+  meta,
+  scouting,
+  palette,
+  go,
+}: {
+  ins: Insights;
+  meta: Meta;
+  scouting: Scouting;
+  palette: Palette;
+  go: (t: Tab, anchor?: string) => void;
+}) {
   const placebo12 = ins.placebo.find((p) => p.quarter === 4);
   const tiles = [
     {
@@ -76,17 +88,16 @@ export function Overview({ ins, meta, palette, go }: { ins: Insights; meta: Meta
         <section className="card">
           <h3>Try it</h3>
           <p className="card-sub" style={{ marginBottom: 12 }}>
-            The {meta.season} scouting list ranks {(3598).toLocaleString()} players by the gap between model fair value and
-            market value. Filter by league, position and age, then open a player to see his value history and why the
-            model rates him where it does.
+            The scouting list ranks {scouting.players.toLocaleString()} players by the gap between model fair value and
+            their latest market value (as of {scouting.valuesAsOf}). Filter by league, position and age, then open a
+            player to see his value history and why the model rates him where it does.
           </p>
           <button className="theme-btn" onClick={() => go("scouting")} style={{ color: "var(--ink)" }}>
             Open the scouting list →
           </button>
           <p className="note">
             Robustness: shuffling the tournament "scored or assisted" label 1,000 times never produces an effect above{" "}
-            {placebo12 ? `+${placebo12.placebo_max_pct.toFixed(1)}%` : "7%"} (real: +14.4%). Data snapshot{" "}
-            {meta.snapshot}.
+            {placebo12 ? `+${placebo12.placebo_max_pct.toFixed(1)}%` : "7%"} (real: +14.4%). Research findings use the {meta.snapshot} snapshot.
           </p>
         </section>
       </div>

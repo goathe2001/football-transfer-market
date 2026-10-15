@@ -110,6 +110,21 @@ def placebo(con):
 
 
 # ---------------------------------------------------------------------------------- C. SHAP
+def lgbm_shap(train, test):
+    """Fit LightGBM on the step-4 features and return (predictions, exact tree SHAP values) for test."""
+    import lightgbm as lgb
+
+    cats = {c: sorted(train[c].unique()) for c in valuation.CATS}
+    X_train, X_test = valuation.design(train, cats), valuation.design(test, cats)
+    lgbm = lgb.LGBMRegressor(n_estimators=600, learning_rate=0.05, num_leaves=31, min_child_samples=40,
+                             reg_lambda=1.0, subsample=0.8, subsample_freq=1, colsample_bytree=0.9,
+                             random_state=0, verbose=-1)
+    lgbm.fit(X_train, train["rel_value"], categorical_feature=valuation.CATS)
+    contrib = lgbm.predict(X_test, pred_contrib=True)  # last column = baseline
+    values = pd.DataFrame(contrib[:, :-1], columns=X_test.columns, index=X_test.index)
+    return lgbm.predict(X_test), values
+
+
 def fit_shap(con):
     """Exact tree SHAP values via LightGBM for every 2025/26 player-season.
 
@@ -119,35 +134,19 @@ def fit_shap(con):
 
     Returns (test frame with step-4 and LightGBM residuals, SHAP values in log points, check dict).
     """
-    import lightgbm as lgb
     from sklearn.metrics import r2_score
 
     df = valuation.load(con)
     train, test = df[df["season"] < valuation.CURRENT], df[df["season"] == valuation.CURRENT].copy()
-    cats = {c: sorted(train[c].unique()) for c in valuation.CATS}
-
-    def frame(d):
-        X = valuation.design(d, cats)
-        for c in valuation.NUMS:
-            X[c] = X[c].astype("float64")
-        return X
-
-    X_train, X_test = frame(train), frame(test)
-    lgbm = lgb.LGBMRegressor(n_estimators=600, learning_rate=0.05, num_leaves=31, min_child_samples=40,
-                             reg_lambda=1.0, subsample=0.8, subsample_freq=1, colsample_bytree=0.9,
-                             random_state=0, verbose=-1)
-    lgbm.fit(X_train, train["rel_value"], categorical_feature=valuation.CATS)
+    lgb_pred, values = lgbm_shap(train, test)
 
     # Agreement with the step-4 model.
     hgb_pred, _ = valuation.fit_predict(train, test)
-    lgb_pred = lgbm.predict(X_test)
     check = {"r2_lightgbm": r2_score(test["rel_value"], lgb_pred),
              "r2_step4_model": r2_score(test["rel_value"], hgb_pred),
              "residual_correlation": np.corrcoef(test["rel_value"] - lgb_pred,
                                                  test["rel_value"] - hgb_pred)[0, 1]}
 
-    contrib = lgbm.predict(X_test, pred_contrib=True)  # last column = baseline
-    values = pd.DataFrame(contrib[:, :-1], columns=X_test.columns, index=X_test.index)
     test["residual_step4"] = test["rel_value"] - hgb_pred
     test["residual_lgbm"] = test["rel_value"] - lgb_pred
     return test, values, check

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Insights as Ins, Meta, Player } from "./data";
+import type { Insights as Ins, Meta, Player, Scouting as ScoutingInfo } from "./data";
 import { useJson } from "./data";
 import { useTheme } from "./theme";
 import { Overview } from "./components/Overview";
@@ -27,6 +27,7 @@ export default function App() {
   const players = useJson<Player[]>("players");
   const ins = useJson<Ins>("insights");
   const meta = useJson<Meta>("meta");
+  const scouting = useJson<ScoutingInfo>("scouting");
 
   useEffect(() => {
     const onHash = () => setTab(readHash());
@@ -41,7 +42,7 @@ export default function App() {
     if (!a) window.scrollTo({ top: 0 });
   };
   const nextTheme = choice === "system" ? "dark" : choice === "dark" ? "light" : "system";
-  const ready = players && ins && meta;
+  const ready = players && ins && meta && scouting;
 
   return (
     <>
@@ -71,20 +72,21 @@ export default function App() {
         {!ready ? (
           <div className="empty">Loading data…</div>
         ) : tab === "overview" ? (
-          <Overview ins={ins} meta={meta} palette={palette} go={go} />
+          <Overview ins={ins} meta={meta} scouting={scouting} palette={palette} go={go} />
         ) : tab === "scouting" ? (
-          <Scouting players={players} meta={meta} palette={palette} />
+          <Scouting players={players} meta={meta} info={scouting} palette={palette} />
         ) : tab === "insights" ? (
           <Insights ins={ins} meta={meta} palette={palette} anchor={anchor} />
         ) : (
-          <About meta={meta} />
+          <About meta={meta} scouting={scouting} />
         )}
       </main>
       <footer>
         <div className="wrap">
           Data from Transfermarkt via{" "}
           <a href="https://github.com/dcaribou/transfermarkt-datasets">transfermarkt-datasets</a>
-          {meta ? `, snapshot ${meta.snapshot}` : ""}. Analysis and code:{" "}
+          {meta ? `; research snapshot ${meta.snapshot}` : ""}
+          {scouting ? `; scouting list market values as of ${scouting.valuesAsOf}` : ""}. Analysis and code:{" "}
           <a href="https://github.com/goathe2001/football-transfer-market">github.com/goathe2001/football-transfer-market</a>
         </div>
       </footer>

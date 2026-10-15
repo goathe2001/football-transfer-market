@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { Histories, Meta, Player } from "../data";
+import type { Histories, Meta, Player, Scouting as ScoutingInfo } from "../data";
 import { eur, signedPct, useJson } from "../data";
 import type { Palette } from "../theme";
 import { DivergingBars, TooltipBox } from "./chartParts";
@@ -21,7 +21,7 @@ const SHORT_FEATURE: Record<string, string> = {
 };
 const PAGE = 50;
 
-export function Scouting({ players, meta, palette }: { players: Player[]; meta: Meta; palette: Palette }) {
+export function Scouting({ players, meta, info, palette }: { players: Player[]; meta: Meta; info: ScoutingInfo; palette: Palette }) {
   const [q, setQ] = useState("");
   const [league, setLeague] = useState("all");
   const [pos, setPos] = useState("all");
@@ -86,12 +86,17 @@ export function Scouting({ players, meta, palette }: { players: Player[]; meta: 
 
   return (
     <>
-      <h1>{meta.season} scouting list</h1>
+      <h1>Scouting list</h1>
       <p className="lede">
-        Players ranked by how far the model's fair value sits above their Transfermarkt market value. The model only sees
-        minutes, goals, assists, team strength, league, age and position, so treat the list as a starting point for
-        scouting, not a verdict.
+        Players ranked by how far the model's fair value sits above their latest Transfermarkt market value. The model
+        only sees minutes, goals, assists, team strength, league, age and position, so treat the list as a starting point
+        for scouting, not a verdict.
       </p>
+      <div className={`refresh-note${info.stale ? " is-stale" : ""}`} role="note">
+        <span className="refresh-dot" aria-hidden="true" />
+        Market values as of {info.valuesAsOf} · performance from {info.statsSeason}
+        {info.stale ? " · upstream data updates are paused" : ` · rebuilt ${info.refreshed}`}
+      </div>
       <div className="filters" role="group" aria-label="Filters">
         <label className="field">
           Search player or club
@@ -211,13 +216,13 @@ export function Scouting({ players, meta, palette }: { players: Player[]; meta: 
             </button>
           )}
         </div>
-        <div className="detail" id="player-detail">{current && <PlayerDetail p={current} meta={meta} palette={palette} />}</div>
+        <div className="detail" id="player-detail">{current && <PlayerDetail p={current} meta={meta} info={info} palette={palette} />}</div>
       </div>
     </>
   );
 }
 
-function PlayerDetail({ p, meta, palette }: { p: Player; meta: Meta; palette: Palette }) {
+function PlayerDetail({ p, meta, info, palette }: { p: Player; meta: Meta; info: ScoutingInfo; palette: Palette }) {
   const histories = useJson<Histories>("histories");
   const history = useMemo(
     () => (histories?.[String(p.id)] ?? []).map(([d, v]) => ({ t: Date.parse(d), d, v: v / 1e6 })),
@@ -241,12 +246,14 @@ function PlayerDetail({ p, meta, palette }: { p: Player; meta: Meta; palette: Pa
           <div className="muted small">
             {p.sub ?? p.pos} · {p.club} · {meta.leagues[p.league] ?? p.league} · age {p.age}
           </div>
+          {p.now && <div className="small" style={{ marginTop: 2 }}>Now at {p.now}</div>}
         </div>
       </div>
       <div className="value-pair">
         <div>
-          <span>Market value</span>
+          <span title={`Latest Transfermarkt valuation, ${p.valueDate}`}>Market value</span>
           <b>{eur(p.value)}</b>
+          <span>as of {p.valueDate.slice(0, 7)}</span>
         </div>
         <div>
           <span>Model fair value</span>
@@ -346,7 +353,8 @@ function PlayerDetail({ p, meta, palette }: { p: Player; meta: Meta; palette: Pa
       <p className="note">
         {p.excluded &&
           "Russian and Ukrainian club values have been structurally lower since 2022, which the model cannot learn from earlier seasons, so this gap is likely overstated. "}
-        Explanations come from an equivalent LightGBM model (R² {meta.shapCheck.r2_lightgbm}, residuals correlated{" "}
+        Performance and club are from {info.statsSeason}; the model is trained on {info.trainSeasons}. Explanations
+        come from an equivalent LightGBM model (R² {meta.shapCheck.r2_lightgbm}, residuals correlated{" "}
         {meta.shapCheck.residual_correlation} with the main model).
       </p>
     </section>

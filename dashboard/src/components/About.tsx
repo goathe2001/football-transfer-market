@@ -1,6 +1,6 @@
-import type { Meta } from "../data";
+import type { Meta, Scouting } from "../data";
 
-export function About({ meta }: { meta: Meta }) {
+export function About({ meta, scouting }: { meta: Meta; scouting: Scouting }) {
   return (
     <>
       <h1>Method &amp; data</h1>
@@ -47,6 +47,15 @@ export function About({ meta }: { meta: Meta }) {
         </section>
         <section className="card">
           <h3>Reading the scouting list</h3>
+          <p className="card-sub">
+            <b>Refreshable on demand.</b> One click in GitHub Actions downloads the latest data, scores players on the
+            most recent season with enough minutes played ({scouting.statsSeason}) using a model trained on{" "}
+            {scouting.trainSeasons}, and compares that fair value with each player's latest market value (currently as of{" "}
+            {scouting.valuesAsOf}). The research findings elsewhere on this site stay fixed on the {meta.snapshot}{" "}
+            snapshot.
+            {scouting.stale &&
+              " The upstream dataset paused its updates in July 2026, so the list will be rebuilt once new data is published."}
+          </p>
           <p className="card-sub">
             Gap = model fair value ÷ market value − 1. A large positive gap means the player's market value is low for his
             minutes, output, team and league. In the backtest, the most undervalued tenth of players gained about 16%

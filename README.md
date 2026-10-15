@@ -5,8 +5,11 @@ match appearances from Transfermarkt, this project finds where clubs overpay, wh
 price, and whether "undervalued" players can be identified in advance.
 
 **[Open the interactive dashboard →](https://goathe2001.github.io/football-transfer-market/)**
-Browse the 2025/26 scouting list with each player's value history and SHAP explanation, and explore
-every chart below with filters, tooltips and table views.
+Browse the scouting list with each player's value history and SHAP explanation, and explore every
+chart below with filters, tooltips and table views. The scouting list can be **rebuilt from the
+latest data with one click** (GitHub Actions → "Refresh scouting list" → Run workflow); the
+research findings below stay fixed on the 2026-06 snapshot. The upstream dataset paused its updates
+in July 2026, so the list currently reflects market values as of June 2026 and says so on the page.
 
 ## Key findings
 
@@ -184,7 +187,8 @@ python analysis/02_transfer_premium.py
 python analysis/03_world_cup_effect.py
 python analysis/04_undervalued.py
 python analysis/05_robustness.py
-python analysis/06_export_dashboard.py   # JSON for the dashboard
+python analysis/06_export_dashboard.py   # research JSON for the dashboard (frozen)
+python analysis/07_refresh_scouting.py   # scouting-list JSON (run on demand in CI)
 
 cd dashboard && npm install && npm run dev   # local dashboard at http://localhost:5173
 ```
@@ -204,7 +208,8 @@ analysis/   one script per question, numbered in order
 figures/    charts produced by the scripts
 outputs/    CSV tables produced by the scripts
 dashboard/  React + TypeScript + Recharts dashboard, deployed to GitHub Pages by
-            .github/workflows/deploy-dashboard.yml
+            .github/workflows/deploy-dashboard.yml; the scouting list is rebuilt on demand
+            by .github/workflows/refresh-scouting.yml
 ```
 
 ## Limitations
