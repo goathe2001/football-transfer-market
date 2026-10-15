@@ -30,6 +30,7 @@ export function About({ meta, scouting }: { meta: Meta; scouting: Scouting }) {
             <li><b>Tournament effect:</b> event study with matching cells (tournament × position × age × value × pre-tournament momentum), checked with 1,000 within-cell placebo shuffles.</li>
             <li><b>Valuation model:</b> gradient boosting, walk-forward validation (each season predicted by a model trained on earlier seasons only), SHAP explanations.</li>
             <li><b>Age curves:</b> delta method (within-player changes) against the naive cross-section.</li>
+            <li><b>Money vs. the table:</b> OLS of points per game on preseason squad value relative to the league average, with league fixed effects, validated season by season; live standings from football-data.org, updated daily.</li>
           </ul>
         </section>
         <section className="card">
@@ -39,6 +40,7 @@ export function About({ meta, scouting }: { meta: Meta; scouting: Scouting }) {
             <li>Free transfers, loans and loan returns all carry a fee of 0, so premiums cover paid transfers only.</li>
             <li>Squads for past tournaments are not recorded; scorers and assisters are identified from goal events.</li>
             <li>The valuation model sees goals, assists, minutes and team context, not defensive quality, injuries or contracts.</li>
+            <li>Money vs. the table starts in 2018/19 because earlier valuation coverage is sparse. Live-season squad values use the latest valuations ({meta.snapshot}), so later summer transfers are missing, and promoted clubs with few valued players get no expectation.</li>
             <li>
               {meta.excludedLeagues.map((l) => meta.leagues[l] ?? l).join(" and ")} players are hidden from the scouting list by
               default: club values there have been structurally lower since 2022.

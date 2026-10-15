@@ -19,6 +19,7 @@ in July 2026, so the list currently reflects market values as of June 2026 and s
 | 🏆 | A goal or assist at a World Cup, Euro or Copa América raises a player's value by **12–14%**, and the gain lasts at least a year | Event study, 7 tournaments, matched controls, pre-trend correction, placebo test |
 | 🔎 | Players a valuation model flags as undervalued gain **+16% vs. the market** the following year; the most overvalued lose ~3% | Gradient boosting (out-of-sample R² 0.86), walk-forward backtest, SHAP |
 | 📉 | Naive age curves overstate how much value a 32-year-old keeps by **~75%** (62% vs. 35% of peak for attackers) because of survivorship bias | Within-player delta method |
+| 💰 | Preseason squad value explains **56%** of league points per game; doubling it relative to the league average is worth about **+11 points** a season | OLS, 776 big-five club-seasons, leave-one-season-out validation; tracked live |
 
 ![Backtest: undervalued players appreciate](figures/04_undervalued.png)
 
@@ -44,6 +45,8 @@ structural breaks) · reproducible pipelines · React/TypeScript data dashboard
    player's valuation, and does the jump last? (7 tournaments, 2014–2024)
 4. **Undervalued players.** Which players are valued well below what their performance predicts,
    and does being undervalued predict future value growth?
+5. **Money vs. the table.** How much of a club's league finish does its preseason squad value
+   explain, which clubs beat or miss that expectation, and how is the current season tracking?
 
 ## Data
 
@@ -176,6 +179,28 @@ regular starters at strong clubs in strong leagues whose market values have not 
 context. For example, Villarreal goalkeeper Luiz Júnior (market value €12m, model €38m) is lifted by
 LaLiga (+161%), Villarreal's goal difference (+45%) and Champions League minutes (+44%).
 
+### 6. Money vs. the table: squad value explains about half of a season
+
+![Squad value vs points](figures/08_money_table.png)
+
+For every big-five club-season from 2018/19 to 2025/26 (776 with complete data), the preseason squad
+value is the sum of each player's last market valuation on or before 31 August, assigned to the club
+recorded on that valuation, so nothing about who later played is used. Points per game are regressed
+on squad value relative to the league-season average (log scale), with league fixed effects.
+
+- **Fit.** R² **0.56**, and the same **0.56** when each season is predicted by a model fitted on the
+  other seasons, so the relationship is stable rather than overfitted. Within a season, the rank
+  correlation between squad value and final points averages **0.73**.
+- **Size.** Doubling squad value relative to the league average is worth about **0.28 points per
+  game**, roughly **+11 points** over 38 games.
+- **Outliers make sense.** The biggest overperformers include Liverpool 2018/19 and 2019/20,
+  Leverkusen's unbeaten 2023/24 title, Girona 2023/24 and Stuttgart 2023/24 (+29 to +31 points over
+  expectation); the biggest underperformers include Schalke 2020/21 (−34) and Monaco 2018/19 (−33).
+- **Live.** The dashboard compares the current season's standings, fetched daily from
+  [football-data.org](https://www.football-data.org/), with the points expected from preseason squad
+  value. The daily job (`analysis/09_live_standings.py`) uses only the Python standard library and
+  matches team names between the two sources automatically.
+
 ## Run it
 
 ```bash
@@ -189,6 +214,8 @@ python analysis/04_undervalued.py
 python analysis/05_robustness.py
 python analysis/06_export_dashboard.py   # research JSON for the dashboard (frozen)
 python analysis/07_refresh_scouting.py   # scouting-list JSON (run on demand in CI)
+python analysis/08_money_table.py        # squad value vs. league points (history + live-season squads)
+FOOTBALL_DATA_TOKEN=... python analysis/09_live_standings.py   # live tables (run daily in CI)
 
 cd dashboard && npm install && npm run dev   # local dashboard at http://localhost:5173
 ```
@@ -227,6 +254,10 @@ dashboard/  React + TypeScript + Recharts dashboard, deployed to GitHub Pages by
   define the comparison pool. The control group therefore includes some players who were not at the
   tournament, and the estimate combines "played well" with "was selected and played".
 - The 2026 World Cup cannot be analysed yet: valuations in this snapshot end on 2026-06-12.
+- Money vs. the table starts in 2018/19: before that, valuation coverage is too sparse (some top
+  clubs' preseason squads are undercounted by half). For the live season, squad values use the
+  latest valuations (June 2026), so summer transfers after that are not reflected, and newly
+  promoted clubs with fewer than 15 valued players get no expectation.
 - Performance data is limited to goals, assists, minutes and cards (no expected-goals data).
 
 ## Data credit

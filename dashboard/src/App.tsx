@@ -6,11 +6,14 @@ import { Overview } from "./components/Overview";
 import { Scouting } from "./components/Scouting";
 import { Insights } from "./components/Insights";
 import { About } from "./components/About";
+import { MoneyTable } from "./components/MoneyTable";
+import type { MoneyHistory, MoneyLive } from "./components/MoneyTable";
 
-type Tab = "overview" | "scouting" | "insights" | "about";
+type Tab = "overview" | "scouting" | "money" | "insights" | "about";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "scouting", label: "Scouting list" },
+  { id: "money", label: "Money vs. table" },
   { id: "insights", label: "Market insights" },
   { id: "about", label: "Method & data" },
 ];
@@ -28,6 +31,9 @@ export default function App() {
   const ins = useJson<Ins>("insights");
   const meta = useJson<Meta>("meta");
   const scouting = useJson<ScoutingInfo>("scouting");
+  const money = useJson<MoneyHistory>("money_history", tab === "money");
+  // Optional: written by the daily live-standings job; absent until it has run.
+  const live = useJson<MoneyLive>("money_live", tab === "money");
 
   useEffect(() => {
     const onHash = () => setTab(readHash());
@@ -75,6 +81,8 @@ export default function App() {
           <Overview ins={ins} meta={meta} scouting={scouting} palette={palette} go={go} />
         ) : tab === "scouting" ? (
           <Scouting players={players} meta={meta} info={scouting} palette={palette} />
+        ) : tab === "money" ? (
+          money ? <MoneyTable history={money} live={live} meta={meta} palette={palette} /> : <div className="empty">Loading…</div>
         ) : tab === "insights" ? (
           <Insights ins={ins} meta={meta} palette={palette} anchor={anchor} />
         ) : (

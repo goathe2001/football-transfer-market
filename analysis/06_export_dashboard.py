@@ -126,7 +126,7 @@ def main():
 
     for name, obj in [("insights", ins), ("meta", meta)]:
         path = DEST / f"{name}.json"
-        path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
+        path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
         print(f"{path.relative_to(ROOT)}: {path.stat().st_size / 1e6:.2f} MB")
 
 

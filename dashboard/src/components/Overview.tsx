@@ -5,7 +5,7 @@ import type { Palette } from "../theme";
 import { ChartCard } from "./ChartCard";
 import { RoundedBar, TooltipBox } from "./chartParts";
 
-type Tab = "overview" | "scouting" | "insights" | "about";
+type Tab = "overview" | "scouting" | "money" | "insights" | "about";
 
 export function Overview({
   ins,
@@ -92,9 +92,14 @@ export function Overview({
             their latest market value (as of {scouting.valuesAsOf}). Filter by league, position and age, then open a
             player to see his value history and why the model rates him where it does.
           </p>
-          <button className="theme-btn" onClick={() => go("scouting")} style={{ color: "var(--ink)" }}>
-            Open the scouting list →
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="theme-btn" onClick={() => go("scouting")} style={{ color: "var(--ink)" }}>
+              Open the scouting list →
+            </button>
+            <button className="theme-btn" onClick={() => go("money")} style={{ color: "var(--ink)" }}>
+              Money vs. the table →
+            </button>
+          </div>
           <p className="note">
             Robustness: shuffling the tournament "scored or assisted" label 1,000 times never produces an effect above{" "}
             {placebo12 ? `+${placebo12.placebo_max_pct.toFixed(1)}%` : "7%"} (real: +14.4%). Research findings use the {meta.snapshot} snapshot.

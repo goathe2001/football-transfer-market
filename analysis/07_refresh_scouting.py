@@ -121,7 +121,7 @@ def main():
     rows, histories, info = build(con)
     for name, obj in [("players", rows), ("histories", histories), ("scouting", info)]:
         path = DEST / f"{name}.json"
-        path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
+        path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
         print(f"{path.relative_to(ROOT)}: {path.stat().st_size / 1e6:.2f} MB")
     print(info)
     top = sorted((p for p in rows if p["age"] <= 26 and p["min"] >= 1500 and p["value"] >= 1e6 and not p["excluded"]),
