@@ -1,10 +1,32 @@
 # European Football Transfer Market Analysis
 
-Is the football transfer market rational? This project uses Transfermarkt data to study how player
-market values evolve, whether clubs pay systematic premiums over market value, and how much a
-World Cup moves a player's valuation.
+Is the football transfer market rational? Using 175K transfers, 656K market valuations and 1.9M
+match appearances from Transfermarkt, this project finds where clubs overpay, what moves a player's
+price, and whether "undervalued" players can be identified in advance.
 
-> Work in progress. Findings are added to each section as the analysis is completed.
+## Key findings
+
+| | Finding | Method |
+|---|---|---|
+| 💷 | **Premier League clubs pay ~2x** the fee-to-market-value ratio of buyers outside the big five leagues; under-21 players cost **+80%** over market value | Regression on 16K paid transfers, clustered SEs |
+| 🏆 | A goal or assist at a World Cup, Euro or Copa América raises a player's value by **12–14%**, and the gain lasts at least a year | Event study, 7 tournaments, matched controls, pre-trend correction, placebo test |
+| 🔎 | Players a valuation model flags as undervalued gain **+16% vs. the market** the following year; the most overvalued lose ~3% | Gradient boosting (out-of-sample R² 0.86), walk-forward backtest, SHAP |
+| 📉 | Naive age curves overstate how much value a 32-year-old keeps by **~75%** (62% vs. 35% of peak for attackers) because of survivorship bias | Within-player delta method |
+
+![Backtest: undervalued players appreciate](figures/04_undervalued.png)
+
+*Right panel: players are sorted each season by how far their market value sits below (decile 1) or
+above (decile 10) the model's estimate. Undervalued players' values rise the following year;
+overvalued ones fall.*
+
+**What a club could do with this:** sell outfield players by 27–28 before value falls steeply; treat
+a player's post-tournament price bump as lasting rather than a short spike; and screen leagues
+outside England, where purchase premiums are lowest, using the model's undervalued list.
+
+**Skills shown:** SQL (DuckDB) · regression with clustered standard errors and quantile regression
+· event-study design, pre-trend checks and randomization inference · gradient boosting with
+walk-forward validation and SHAP explanations · bias diagnosis (survivorship, selection on form,
+structural breaks) · reproducible pipelines
 
 ## Questions
 
@@ -22,7 +44,7 @@ World Cup moves a player's valuation.
 a cleaned, weekly-refreshed export of Transfermarkt (players, valuations, transfers, appearances,
 games). Downloaded as a single DuckDB file; not committed to this repo.
 
-## Findings so far
+## Detailed findings
 
 ### 1. Age curves: the naive curve hides how fast value collapses after 30
 
@@ -68,7 +90,7 @@ overpaying. Who is buying matters far more:
 Model: OLS on log(fee / market value), standard errors clustered by buying club, season fixed
 effects; R² = 0.17. Coefficients are associations, not causal effects.
 
-### 3. Tournament effect: a goal or assist is worth about +12–15%, and it sticks
+### 3. Tournament effect: a goal or assist is worth about +12–14%, and it sticks
 
 ![Tournament effect](figures/03_world_cup_effect.png)
 
@@ -84,10 +106,10 @@ the final.
   **pre-tournament momentum** to the matching removes most of this (the 6–12 month pre-period
   differences become statistically indistinguishable from zero); a small run-up of about 4% remains
   in the final six months before kickoff.
-- **Effect.** With that correction, scorers and assisters gain an extra **+18%** in the first
-  quarter after the final, settling at **+12–13%** after six months and **+15%** after a year. The
+- **Effect.** With that correction, scorers and assisters gain an extra **+17%** in the first
+  quarter after the final, settling at **+12%** after six months and **+14%** after a year. The
   bump does not fade within twelve months.
-- **Dose response.** One or two goal contributions are worth about +10–13%; three or more about
+- **Dose response.** One or two goal contributions are worth about +9–13%; three or more about
   **+22–24%**.
 
 Model: for each quarter of event time, OLS of the log change from the last pre-tournament value on a
@@ -109,17 +131,43 @@ defined relative to each season's median so market inflation does not leak in.
 - **Backtest.** If the residual (actual minus predicted) captures real mispricing, undervalued
   players should catch up. They do: across 23,348 player-seasons, the most undervalued decile gained
   **+16%** relative to the market over the following year and the most overvalued decile lost about
-  3%, with a monotone pattern in between. The gap holds within every age band (≤23: +35 points,
-  24–27: +28, 28+: +18 between the bottom and top fifths), so it is not just young players growing.
+  3%, with a near-monotone pattern in between. The gap holds within every age band (≤23: +36
+  points, 24–27: +27, 28+: +19 between the bottom and top fifths), so it is not just young players growing.
 - **2025/26 scouting list** (`outputs/04_undervalued_2025_26.csv`): players aged 26 or under with
   at least 1,500 league minutes and a value of at least EUR 1m, ranked by how far their market value
   sits below the model's estimate. Russian and Ukrainian league players are left off the list: their
   values have been structurally lower since 2022, a break the model cannot learn from earlier seasons,
   so they would appear as false bargains. Excluding them leaves the backtest unchanged (decile 1
-  +16.6%, decile 10 −2.7%).
+  +15.5%, decile 10 −2.2%).
 
 The list is a starting point for scouting, not a verdict. The model sees only goals, assists, minutes
 and team context, so it cannot judge defensive quality, injuries or contract situations.
+
+### 5. Robustness and interpretability
+
+![Robustness checks](figures/05_robustness.png)
+
+**A. Is the Premier League premium driven by a few blockbuster overpays? No.** Quantile regression
+re-estimates the premium model at different points of the fee-to-value distribution. The English
+premium is largest at the **bottom** of the distribution (+108% at the 10th percentile vs. about
++70% from the median up): English clubs rarely get a bargain, rather than occasionally overpaying
+wildly. The youth premium works the other way, rising from +60% at the 10th percentile to +103% at
+the 90th, so the biggest overpays are concentrated on young players.
+
+**B. Could the tournament effect be an artefact of the matching? No.** The "scored or assisted"
+label was shuffled among players within the same matching cell 1,000 times and the effect
+re-estimated each time. The shuffled estimates centre on 0% and never exceed +4.6% (6 months) or
++6.6% (12 months), against real effects of +11.7% and +14.4% (permutation p = 0.001, the smallest
+possible with 1,000 draws).
+
+**C. What does the valuation model actually use? Mostly context.** SHAP values (from an equivalent
+LightGBM model: same R² of 0.86, residuals correlated 0.99 with the step-4 model) show that
+**league** dominates (typical effect on predicted value about ±125%), followed by age (±42%) and
+team quality: club goal difference (±32%) and European minutes (±23%). Individual output (goals and
+assists per 90) matters less (±13%). This explains the scouting list: the top names are mostly
+regular starters at strong clubs in strong leagues whose market values have not caught up with that
+context. For example, Villarreal goalkeeper Luiz Júnior (market value €12m, model €38m) is lifted by
+LaLiga (+161%), Villarreal's goal difference (+45%) and Champions League minutes (+44%).
 
 ## Run it
 
@@ -131,7 +179,11 @@ python analysis/01_age_curves.py   # add --big5 for top-5 leagues only
 python analysis/02_transfer_premium.py
 python analysis/03_world_cup_effect.py
 python analysis/04_undervalued.py
+python analysis/05_robustness.py
 ```
+
+Results are exactly reproducible: the SQL breaks every tie explicitly and the scripts fix row order
+and random seeds.
 
 The main SQL lives in `sql/` (`02_paid_transfers.sql`, `03_tournament_panel.sql`,
 `04_player_seasons.sql`).
