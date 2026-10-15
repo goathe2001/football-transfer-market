@@ -4,4 +4,6 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 .DS_Store
-.DS_Store
+dashboard/node_modules/
+dashboard/dist/
+dashboard/*.tsbuildinfo

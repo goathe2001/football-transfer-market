@@ -110,12 +110,14 @@ def placebo(con):
 
 
 # ---------------------------------------------------------------------------------- C. SHAP
-def shap_analysis(con):
-    """Exact tree SHAP values via LightGBM.
+def fit_shap(con):
+    """Exact tree SHAP values via LightGBM for every 2025/26 player-season.
 
     The step-4 model (scikit-learn HistGradientBoosting) has no fast exact SHAP implementation for
     native categorical features, so the same features are refit with LightGBM, which computes tree
     SHAP values natively. Its accuracy and residuals are checked against the step-4 model before use.
+
+    Returns (test frame with step-4 and LightGBM residuals, SHAP values in log points, check dict).
     """
     import lightgbm as lgb
     from sklearn.metrics import r2_score
@@ -146,17 +148,21 @@ def shap_analysis(con):
 
     contrib = lgbm.predict(X_test, pred_contrib=True)  # last column = baseline
     values = pd.DataFrame(contrib[:, :-1], columns=X_test.columns, index=X_test.index)
+    test["residual_step4"] = test["rel_value"] - hgb_pred
+    test["residual_lgbm"] = test["rel_value"] - lgb_pred
+    return test, values, check
 
-    importance = (values.abs().mean().sort_values(ascending=False)
+
+def shap_analysis(con):
+    test, values, check = fit_shap(con)
+    importance =(values.abs().mean().sort_values(ascending=False)
                   .rename("mean_abs_shap").reset_index().rename(columns={"index": "feature"}))
     importance["label"] = importance["feature"].map(FEATURE_LABELS)
     # Mean |SHAP| in log points -> approximate typical % swing in predicted value.
     importance["typical_swing_pct"] = pct(importance["mean_abs_shap"])
 
     # Explain the top of the step-4 scouting list.
-    test["residual_step4"] = test["rel_value"] - hgb_pred
-    test["residual_lgbm"] = test["rel_value"] - lgb_pred
-    pick = test[(test["league_minutes"] >= 1500) & (test["age"] <= 26) & (test["value"] >= 1e6)
+    pick =test[(test["league_minutes"] >= 1500) & (test["age"] <= 26) & (test["value"] >= 1e6)
                 & ~test["league"].isin(valuation.EXCLUDE_FROM_LIST)].nsmallest(3, "residual_step4")
     examples = []
     for idx, r in pick.iterrows():

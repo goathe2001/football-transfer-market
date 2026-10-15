@@ -4,6 +4,10 @@ Is the football transfer market rational? Using 175K transfers, 656K market valu
 match appearances from Transfermarkt, this project finds where clubs overpay, what moves a player's
 price, and whether "undervalued" players can be identified in advance.
 
+**[Open the interactive dashboard →](https://goathe2001.github.io/football-transfer-market/)**
+Browse the 2025/26 scouting list with each player's value history and SHAP explanation, and explore
+every chart below with filters, tooltips and table views.
+
 ## Key findings
 
 | | Finding | Method |
@@ -26,7 +30,7 @@ outside England, where purchase premiums are lowest, using the model's undervalu
 **Skills shown:** SQL (DuckDB) · regression with clustered standard errors and quantile regression
 · event-study design, pre-trend checks and randomization inference · gradient boosting with
 walk-forward validation and SHAP explanations · bias diagnosis (survivorship, selection on form,
-structural breaks) · reproducible pipelines
+structural breaks) · reproducible pipelines · React/TypeScript data dashboard
 
 ## Questions
 
@@ -126,7 +130,7 @@ trained on 50,113 player-seasons (at least 900 league minutes, 2012/13–2025/26
 defined relative to each season's median so market inflation does not leak in.
 
 - **Walk-forward validation.** Each season from 2018/19 is predicted by a model trained only on
-  earlier seasons. Out-of-sample R² is **0.82–0.87** (linear baseline 0.80–0.85); the median
+  earlier seasons. Out-of-sample R² is **0.81–0.86** (linear baseline 0.80–0.85); the median
   prediction is within about 45% of the actual value.
 - **Backtest.** If the residual (actual minus predicted) captures real mispricing, undervalued
   players should catch up. They do: across 23,348 player-seasons, the most undervalued decile gained
@@ -180,6 +184,9 @@ python analysis/02_transfer_premium.py
 python analysis/03_world_cup_effect.py
 python analysis/04_undervalued.py
 python analysis/05_robustness.py
+python analysis/06_export_dashboard.py   # JSON for the dashboard
+
+cd dashboard && npm install && npm run dev   # local dashboard at http://localhost:5173
 ```
 
 Results are exactly reproducible: the SQL breaks every tie explicitly and the scripts fix row order
@@ -192,10 +199,12 @@ The main SQL lives in `sql/` (`02_paid_transfers.sql`, `03_tournament_panel.sql`
 
 ```
 data/       download script (database itself is git-ignored)
+sql/        main queries (DuckDB)
 analysis/   one script per question, numbered in order
 figures/    charts produced by the scripts
 outputs/    CSV tables produced by the scripts
-dashboard/  interactive React dashboard (planned)
+dashboard/  React + TypeScript + Recharts dashboard, deployed to GitHub Pages by
+            .github/workflows/deploy-dashboard.yml
 ```
 
 ## Limitations
