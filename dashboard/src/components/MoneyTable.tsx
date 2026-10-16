@@ -314,6 +314,7 @@ export function MoneyTable({
                     <td className="num hide-sm">
                       {r.value ? eur(r.value) : "–"}
                       {r.value != null && !r.complete && <span className="tag" title={`Only ${r.players} valued players in the data`}>partial</span>}
+                      {r.value == null && <span className="tag" title="Club not found in the Transfermarkt data (usually newly promoted)">no data</span>}
                     </td>
                   </tr>
                 ))}
@@ -321,8 +322,8 @@ export function MoneyTable({
             </table>
           </div>
           <p className="note">
-            "partial" = fewer than {history.minPlayers} valued players in the data (often newly promoted clubs), so no
-            expectation is given.
+            "partial" = fewer than {history.minPlayers} valued players in the data; "no data" = club not in the
+            Transfermarkt data. Both are usually newly promoted clubs, and no expectation is given for them.
           </p>
         </section>
       </div>

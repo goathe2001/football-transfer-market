@@ -49,7 +49,7 @@ STOP = {
     "fc", "afc", "cf", "ac", "sc", "ssc", "ss", "us", "as", "rc", "ca", "cd", "ud", "rcd", "sv", "vfb", "vfl",
     "tsg", "fsv", "osc", "club", "de", "del", "di", "calcio", "football", "futbol", "balompie", "spa", "s",
     "p", "a", "the", "of", "1", "fussballclub", "1846", "1899", "1901", "1907", "1909", "1910", "1913", "1919",
-    "04", "05", "29",
+    "04", "05", "07", "29",
 }
 
 
@@ -75,24 +75,40 @@ def match_score(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio() * 0.85
 
 
-def find_club(team: dict, league: str, clubs: list) -> tuple:
-    """Return (club, score). Same-league clubs first, then all clubs (promoted teams)."""
-    names = [team.get("name") or "", team.get("shortName") or ""]
+def candidate_scores(team: dict, club: dict, exact_only: bool) -> float:
+    names = [n for n in (team.get("name"), team.get("shortName")) if n]
     override = OVERRIDES.get(norm(names[0]))
-    pools = [[c for c in clubs if c["league"] == league], clubs]
-    for pool in pools:
-        best, best_score = None, 0.0
-        for c in pool:
-            if override:
-                score = 1.0 if norm(c["name"]) == override else 0.0
-            else:
-                score = max(match_score(n, c["name"]) for n in names if n)
-            # Tie-break: the larger squad (the senior side rather than a reserve team).
-            if score > best_score or (score == best_score and best and c["value"] > best["value"]):
-                best, best_score = c, score
-        if best_score >= 0.8:
-            return best, best_score
-    return None, 0.0
+    if override:
+        return 1.0 if norm(club["name"]) == override else 0.0
+    if exact_only:
+        return 1.0 if any(tokens(n) and tokens(n) == tokens(club["name"]) for n in names) else 0.0
+    return max(match_score(n, club["name"]) for n in names)
+
+
+def assign(teams: list, league: str, clubs: list) -> list:
+    """One-to-one matching of API teams to Transfermarkt clubs.
+
+    Pass 1: clubs from the same league, allowing partial/fuzzy matches (score >= 0.8).
+    Pass 2: teams still unmatched (usually newly promoted) against all clubs, exact names only,
+    so a short name like "Deportivo" can never be matched to an unrelated club elsewhere.
+    Within each pass, the highest-scoring pairs are fixed first and each club is used at most once.
+    """
+    result = [(None, 0.0)] * len(teams)
+    used = set()
+    for pool, exact_only in (([c for c in clubs if c["league"] == league], False), (clubs, True)):
+        pairs = []
+        for i, t in enumerate(teams):
+            if result[i][0] is not None:
+                continue
+            for c in pool:
+                score = candidate_scores(t, c, exact_only)
+                if score >= 0.8:
+                    pairs.append((score, c["value"], i, c))
+        for score, _, i, c in sorted(pairs, key=lambda p: (-p[0], -p[1])):
+            if result[i][0] is None and c["id"] not in used:
+                result[i] = (c, score)
+                used.add(c["id"])
+    return result
 
 
 def fetch(code: str, token: str, fixture: Path | None) -> dict:
@@ -117,11 +133,12 @@ def build(token: str, fixture: Path | None) -> dict:
         data = fetch(code, token, fixture)
         table = next(s for s in data["standings"] if s.get("type") == "TOTAL")["table"]
         rows = []
-        for t in table:
-            club, score = find_club(t["team"], league, clubs)
+        matches = assign([t["team"] for t in table], league, clubs)
+        for t, (club, score) in zip(table, matches):
             complete = bool(club) and club["players"] >= min_players
             rows.append({
                 "pos": t["position"], "team": t["team"].get("shortName") or t["team"]["name"],
+                "teamName": t["team"]["name"],
                 "crest": t["team"].get("crest"), "played": t["playedGames"], "points": t["points"],
                 "gd": t["goalDifference"], "form": t.get("form"),
                 "clubId": club["id"] if club else None, "club": club["name"] if club else None,
