@@ -20,6 +20,7 @@ in July 2026, so the list currently reflects market values as of June 2026 and s
 | 🔎 | Players a valuation model flags as undervalued gain **+16% vs. the market** the following year; the most overvalued lose ~3% | Gradient boosting (out-of-sample R² 0.86), walk-forward backtest, SHAP |
 | 📉 | Naive age curves overstate how much value a 32-year-old keeps by **~75%** (62% vs. 35% of peak for attackers) because of survivorship bias | Within-player delta method |
 | 💰 | Preseason squad value explains **56%** of league points per game; doubling it relative to the league average is worth about **+11 points** a season | OLS, 776 big-five club-seasons, leave-one-season-out validation; tracked live |
+| 🎯 | A match model predicts big-five results **12.9% better** than a frequency baseline on 10,734 unseen matches, and its probabilities are well calibrated | Elo + squad-value prior + ordered logit, tuned on 2014–2020, tested on 2020–2026; live predictions daily |
 
 ![Backtest: undervalued players appreciate](figures/04_undervalued.png)
 
@@ -47,6 +48,8 @@ structural breaks) · reproducible pipelines · React/TypeScript data dashboard
    and does being undervalued predict future value growth?
 5. **Money vs. the table.** How much of a club's league finish does its preseason squad value
    explain, which clubs beat or miss that expectation, and how is the current season tracking?
+6. **Match predictions.** How well can match outcomes be predicted from results and squad value,
+   and how does the model do on the current season?
 
 ## Data
 
@@ -201,6 +204,30 @@ on squad value relative to the league-season average (log scale), with league fi
   value. The daily job (`analysis/09_live_standings.py`) uses only the Python standard library and
   matches team names between the two sources automatically.
 
+### 7. Match predictions: 12.9% better than the baseline, and well calibrated
+
+![Match model](figures/10_match_model.png)
+
+Each club has an **Elo rating** that moves after every match (more for upsets, scaled by goal margin);
+an **ordered logit** turns the rating gap into probabilities of a home win, draw or away win. At the
+start of each season, ratings are blended with a prior from preseason squad value (section 6), and
+promoted clubs start at the average rating of the clubs they replaced.
+
+- **Honest validation.** Elo parameters were tuned on 2014/15–2019/20 and the squad-value prior on
+  2018/19–2019/20; the model was then scored once on the 10,734 matches of 2020/21–2025/26.
+- **Accuracy.** Ranked probability score (RPS, lower is better) **0.2015** vs. **0.2312** for a
+  baseline that always predicts the historical outcome frequencies: **12.9% skill**. The model's most
+  likely outcome happened in **52%** of matches (43% for always picking a home win).
+- **Calibration.** Predicted probabilities track observed frequencies closely. Home wins are slightly
+  over-predicted on the test seasons, because home advantage shrank: home teams won **45.6%** of
+  matches before 2020/21 and **42.9%** since (39.9% in 2020/21, played largely behind closed doors).
+- **The squad-value prior helps only a little** (RPS 0.2017 → 0.2015): once a few matches are played,
+  results carry most of the information.
+- **Live.** The daily job replays this season's results through the same ratings, predicts the next
+  matchday and tracks the season's accuracy against the baseline. Every past prediction uses only
+  results known before that match, so the live record is fully out-of-sample. For live use the
+  outcome model is refitted on all seasons through 2025/26 to reflect the lower home advantage.
+
 ## Run it
 
 ```bash
@@ -215,7 +242,8 @@ python analysis/05_robustness.py
 python analysis/06_export_dashboard.py   # research JSON for the dashboard (frozen)
 python analysis/07_refresh_scouting.py   # scouting-list JSON (run on demand in CI)
 python analysis/08_money_table.py        # squad value vs. league points (history + live-season squads)
-FOOTBALL_DATA_TOKEN=... python analysis/09_live_standings.py   # live tables (run daily in CI)
+python analysis/10_match_model.py        # match model + backtest; ratings and parameters for live use
+FOOTBALL_DATA_TOKEN=... python analysis/09_live_standings.py   # live tables + predictions (daily in CI)
 
 cd dashboard && npm install && npm run dev   # local dashboard at http://localhost:5173
 ```
@@ -258,6 +286,8 @@ dashboard/  React + TypeScript + Recharts dashboard, deployed to GitHub Pages by
   clubs' preseason squads are undercounted by half). For the live season, squad values use the
   latest valuations (June 2026), so summer transfers after that are not reflected, and newly
   promoted clubs with fewer than 15 valued players get no expectation.
+- Match predictions use results and squad value only: no injuries, line-ups, schedule congestion or
+  bookmaker information. They are forecasts for analysis, not betting advice.
 - Performance data is limited to goals, assists, minutes and cards (no expected-goals data).
 
 ## Data credit

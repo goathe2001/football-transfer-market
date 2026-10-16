@@ -5,7 +5,7 @@ import type { Palette } from "../theme";
 import { ChartCard } from "./ChartCard";
 import { RoundedBar, TooltipBox } from "./chartParts";
 
-type Tab = "overview" | "scouting" | "money" | "insights" | "about";
+type Tab = "overview" | "scouting" | "money" | "predictions" | "insights" | "about";
 
 export function Overview({
   ins,
@@ -98,6 +98,9 @@ export function Overview({
             </button>
             <button className="theme-btn" onClick={() => go("money")} style={{ color: "var(--ink)" }}>
               Money vs. the table →
+            </button>
+            <button className="theme-btn" onClick={() => go("predictions")} style={{ color: "var(--ink)" }}>
+              Match predictions →
             </button>
           </div>
           <p className="note">

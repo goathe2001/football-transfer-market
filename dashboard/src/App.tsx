@@ -8,12 +8,15 @@ import { Insights } from "./components/Insights";
 import { About } from "./components/About";
 import { MoneyTable } from "./components/MoneyTable";
 import type { MoneyHistory, MoneyLive } from "./components/MoneyTable";
+import { Predictions } from "./components/Predictions";
+import type { MatchModel, MatchPredictions } from "./components/Predictions";
 
-type Tab = "overview" | "scouting" | "money" | "insights" | "about";
+type Tab = "overview" | "scouting" | "money" | "predictions" | "insights" | "about";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "scouting", label: "Scouting list" },
   { id: "money", label: "Money vs. table" },
+  { id: "predictions", label: "Predictions" },
   { id: "insights", label: "Market insights" },
   { id: "about", label: "Method & data" },
 ];
@@ -34,6 +37,9 @@ export default function App() {
   const money = useJson<MoneyHistory>("money_history", tab === "money");
   // Optional: written by the daily live-standings job; absent until it has run.
   const live = useJson<MoneyLive>("money_live", tab === "money");
+  const matchModel = useJson<MatchModel>("match_model", tab === "predictions");
+  // Optional: written by the daily job together with money_live.json.
+  const predictions = useJson<MatchPredictions>("match_predictions", tab === "predictions");
 
   useEffect(() => {
     const onHash = () => setTab(readHash());
@@ -83,6 +89,12 @@ export default function App() {
           <Scouting players={players} meta={meta} info={scouting} palette={palette} />
         ) : tab === "money" ? (
           money ? <MoneyTable history={money} live={live} meta={meta} palette={palette} /> : <div className="empty">Loading…</div>
+        ) : tab === "predictions" ? (
+          matchModel ? (
+            <Predictions model={matchModel} live={predictions} meta={meta} palette={palette} />
+          ) : (
+            <div className="empty">Loading…</div>
+          )
         ) : tab === "insights" ? (
           <Insights ins={ins} meta={meta} palette={palette} anchor={anchor} />
         ) : (

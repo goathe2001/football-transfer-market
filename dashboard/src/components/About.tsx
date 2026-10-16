@@ -30,6 +30,7 @@ export function About({ meta, scouting }: { meta: Meta; scouting: Scouting }) {
             <li><b>Tournament effect:</b> event study with matching cells (tournament × position × age × value × pre-tournament momentum), checked with 1,000 within-cell placebo shuffles.</li>
             <li><b>Valuation model:</b> gradient boosting, walk-forward validation (each season predicted by a model trained on earlier seasons only), SHAP explanations.</li>
             <li><b>Age curves:</b> delta method (within-player changes) against the naive cross-section.</li>
+            <li><b>Match predictions:</b> Elo ratings with margin-of-victory weighting and a squad-value prior, converted to home/draw/away probabilities by an ordered logit; tuned on 2014–2020, scored on 2020–2026 with the ranked probability score; live season replayed daily.</li>
             <li><b>Money vs. the table:</b> OLS of points per game on preseason squad value relative to the league average, with league fixed effects, validated season by season; live standings from football-data.org, updated daily.</li>
           </ul>
         </section>
